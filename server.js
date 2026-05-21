@@ -6,9 +6,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-const OPENAI_API_KEY = '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';
-const YOUTUBE_API_KEY = 'AIzaSyBUFfl1XPnpZ3W7Xk5lc9wscvinlrfK45Q';
-const USDA_API_KEY = 'yceZ6scW7uamMM8kK6cpQ6pjEq1RuUOeSoFZ4Ulq';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const USDA_API_KEY = process.env.USDA_API_KEY;
 
 function extractYoutubeId(url) {
   const patterns = [
@@ -23,12 +23,9 @@ function extractYoutubeId(url) {
   return null;
 }
 
-// 더보기란 + 고정 댓글에서 레시피 텍스트 추출
 async function getYoutubeRecipeText(videoId, fetch) {
   let text = '';
-
   try {
-    // 1. 더보기란 (description) 가져오기
     const videoRes = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${YOUTUBE_API_KEY}`
     );
@@ -36,7 +33,6 @@ async function getYoutubeRecipeText(videoId, fetch) {
     const description = videoData.items?.[0]?.snippet?.description || '';
     text += description;
 
-    // 2. 고정 댓글 가져오기
     const commentRes = await fetch(
       `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&order=relevance&maxResults=5&key=${YOUTUBE_API_KEY}`
     );
@@ -45,15 +41,12 @@ async function getYoutubeRecipeText(videoId, fetch) {
       item => item.snippet.topLevelComment.snippet.textDisplay
     ).join('\n') || '';
     text += '\n' + comments;
-
   } catch (e) {
     console.log('YouTube API 오류:', e.message);
   }
-
   return text;
 }
 
-// USDA API로 재료별 영양소 가져오기
 async function getNutritionFromUSDA(ingredients, fetch) {
   let totalNutrition = {
     calories: 0, carbs: 0, sugar: 0,
@@ -72,26 +65,22 @@ async function getNutritionFromUSDA(ingredients, fetch) {
       const nutrients = food.foodNutrients || [];
       const get = (name) => nutrients.find(n => n.nutrientName?.includes(name))?.value || 0;
 
-      // 100g 기준 → 실제 g수로 환산
       const ratio = (ing.amount || 100) / 100;
-      totalNutrition.calories   += (get('Energy') * ratio);
-      totalNutrition.carbs      += (get('Carbohydrate') * ratio);
-      totalNutrition.sugar      += (get('Sugars') * ratio);
-      totalNutrition.protein    += (get('Protein') * ratio);
-      totalNutrition.fat        += (get('Total lipid') * ratio);
-      totalNutrition.sodium     += (get('Sodium') * ratio / 1000); // mg → g
-      totalNutrition.cholesterol+= (get('Cholesterol') * ratio);
-
+      totalNutrition.calories    += (get('Energy') * ratio);
+      totalNutrition.carbs       += (get('Carbohydrate') * ratio);
+      totalNutrition.sugar       += (get('Sugars') * ratio);
+      totalNutrition.protein     += (get('Protein') * ratio);
+      totalNutrition.fat         += (get('Total lipid') * ratio);
+      totalNutrition.sodium      += (get('Sodium') * ratio / 1000);
+      totalNutrition.cholesterol += (get('Cholesterol') * ratio);
     } catch (e) {
       console.log(`USDA 오류 (${ing.name}):`, e.message);
     }
   }
 
-  // 반올림
   Object.keys(totalNutrition).forEach(k => {
     totalNutrition[k] = Math.round(totalNutrition[k]);
   });
-  // sodium 다시 mg로
   totalNutrition.sodium = Math.round(totalNutrition.sodium * 1000);
 
   return totalNutrition;
@@ -117,7 +106,6 @@ app.post('/api/extract', async (req, res) => {
 
     recipeText = await getYoutubeRecipeText(videoId, fetch);
 
-    // 제목 가져오기
     try {
       const meta = await fetch(`https://www.youtube.com/oembed?url=https://youtube.com/watch?v=${videoId}&format=json`);
       const metaData = await meta.json();
@@ -128,17 +116,11 @@ app.post('/api/extract', async (req, res) => {
   const dietContext = dietTypes && dietTypes.length > 0
     ? dietTypes.join(', ') : 'General healthy diet';
 
-  // GPT로 재료 파싱 + 다이어트 대체재료 생성
   const prompt = `You are a professional nutritionist and chef AI.
 
 Video title: "${videoTitle}"
 Description/Comments: "${recipeText.slice(0, 4000)}"
 Diet preferences: ${dietContext}
-
-TASK:
-1. Extract ingredients with exact amounts (g, ml, etc) from the description/comments
-2. Create a diet-optimized version with STRICTLY LOWER calories
-3. Extract cooking steps
 
 CRITICAL RULES for diet version:
 - Total calories MUST be at least 20% lower than original
@@ -148,7 +130,6 @@ CRITICAL RULES for diet version:
 - Use lower-calorie substitutes (e.g. almond flour has more calories than wheat - avoid unless keto)
 - Reduce amounts of high-calorie ingredients (butter, oil, sugar)
 - Do NOT add ingredients that increase total calories
-- Calculate realistic nutrition based on actual ingredient amounts
 
 TASK:
 1. Extract ingredients with exact amounts (g, ml, etc) from the description/comments
@@ -200,7 +181,6 @@ Return ONLY valid JSON:
 
     const result = JSON.parse(gptData.choices[0].message.content);
 
-    // USDA로 실제 영양소 계산
     const [origNutrition, dietNutrition] = await Promise.all([
       getNutritionFromUSDA(result.original.ingredients, fetch),
       getNutritionFromUSDA(result.diet.ingredients, fetch)
@@ -217,6 +197,10 @@ Return ONLY valid JSON:
   }
 });
 
-app.listen(3000, () => {
-  console.log('서버 실행 중: http://localhost:3000');
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(3000, () => {
+    console.log('서버 실행 중: http://localhost:3000');
+  });
+}
+
+module.exports = app;
