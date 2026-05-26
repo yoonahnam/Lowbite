@@ -47,16 +47,60 @@ async function getYoutubeRecipeText(videoId, fetch) {
   return text;
 }
 
+// 한국어 재료명을 영어로 번역
+async function translateToEnglish(names, fetch) {
+  try {
+    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: `Translate these food ingredient names to English. Return ONLY a JSON array of strings in the same order, no explanation.
+Input: ${JSON.stringify(names)}
+Output format: ["english name 1", "english name 2", ...]`
+        }],
+        temperature: 0
+      })
+    });
+    const data = await gptRes.json();
+    const text = data.choices[0].message.content.trim();
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch (e) {
+    console.log('번역 오류:', e.message);
+    return names; // 실패하면 원래 이름 그대로 사용
+  }
+}
+
+function isKorean(text) {
+  return /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
+}
+
 async function getNutritionFromUSDA(ingredients, fetch) {
   let totalNutrition = {
     calories: 0, carbs: 0, sugar: 0,
     protein: 0, fat: 0, sodium: 0, cholesterol: 0
   };
 
-  for (const ing of ingredients) {
+  // 한국어 재료명이 있으면 영어로 번역
+  const names = ingredients.map(i => i.name);
+  const hasKorean = names.some(n => isKorean(n));
+  let searchNames = names;
+  if (hasKorean) {
+    searchNames = await translateToEnglish(names, fetch);
+  }
+
+  for (let i = 0; i < ingredients.length; i++) {
+    const ing = ingredients[i];
+    const searchName = searchNames[i] || ing.name;
     try {
       const res = await fetch(
-        `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(ing.name)}&pageSize=1&api_key=${USDA_API_KEY}`
+        `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(searchName)}&pageSize=1&api_key=${USDA_API_KEY}`
       );
       const data = await res.json();
       const food = data.foods?.[0];
