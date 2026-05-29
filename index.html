@@ -287,6 +287,32 @@ nav{position:sticky;top:0;z-index:200;background:rgba(249,249,247,0.92);backdrop
 .settings-arrow{color:var(--text-muted);font-size:14px;margin-left:4px}
 select.form-input{appearance:none;background:var(--surface);cursor:pointer;padding-right:24px}
 #recipe-detail-page{padding:0}
+
+/* ── LOGIN OVERLAY ── */
+#login-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 24px;
+  transition:opacity .3s;
+}
+#login-overlay.hidden{opacity:0;pointer-events:none}
+.login-logo{font-family:'Sora',sans-serif;font-weight:700;font-size:32px;color:var(--green);letter-spacing:-1px;margin-bottom:6px}
+.login-logo span{color:var(--accent)}
+.login-tagline{font-size:14px;color:var(--text-secondary);text-align:center;max-width:280px;line-height:1.55;margin-bottom:40px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:18px;box-shadow:0 4px 24px rgba(0,0,0,.07)}
+.login-card h2{font-family:'Sora',sans-serif;font-size:17px;font-weight:600;letter-spacing:-.03em;color:var(--text-primary)}
+.login-card p{font-size:12.5px;color:var(--text-secondary);text-align:center;line-height:1.6;margin-top:-6px}
+.btn-google-login{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--border);border-radius:100px;padding:11px 22px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:#3c4043;cursor:pointer;transition:box-shadow .15s,border-color .15s;width:100%;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.btn-google-login:hover{border-color:#bbb;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.btn-google-login img{width:18px;height:18px}
+.login-loading{font-size:13px;color:var(--text-muted);display:none}
+.login-error{font-size:12px;color:var(--red);background:var(--red-light);padding:8px 14px;border-radius:var(--radius-sm);width:100%;text-align:center;display:none}
+.login-divider{font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);width:100%;text-align:center;padding-top:14px}
+
+/* ── NAV USER AVATAR ── */
+.nav-user-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;display:none}
+.nav-user-avatar.show{display:block}
 .detail-back{display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;background:var(--surface);border-bottom:1px solid var(--border)}
 .detail-back:hover{color:var(--text-primary)}
 .detail-body{padding:20px 14px 40px;display:flex;flex-direction:column;gap:12px;max-width:700px;margin:0 auto;width:100%}
@@ -313,6 +339,23 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 </head>
 <body>
 
+<!-- ══ LOGIN OVERLAY ══ -->
+<div id="login-overlay">
+  <div class="login-logo">LowBite<span>.</span></div>
+  <p class="login-tagline">AI-powered diet recipe converter.<br>Sign in to get started.</p>
+  <div class="login-card">
+    <h2>Welcome back 👋</h2>
+    <p>Sign in with your Google account to access your recipes, diary, and saved meals.</p>
+    <button class="btn-google-login" onclick="signInWithGoogle()" id="google-login-btn">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Continue with Google
+    </button>
+    <div class="login-loading" id="login-loading">Signing in...</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-divider">Your data stays private and secure</div>
+  </div>
+</div>
+
 <!-- NAV -->
 <nav>
   <div class="logo" onclick="showPage('home')">LowBite<span>.</span></div>
@@ -331,7 +374,8 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
       <span class="cart-badge" id="cart-badge">0</span>
     </button>
     <button class="nav-btn" id="nav-mypage" onclick="showPage('mypage')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <img class="nav-user-avatar" id="nav-user-avatar" src="" alt="">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="nav-mypage-icon" style="pointer-events:none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       My Page
     </button>
   </div>
@@ -489,14 +533,18 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 <!-- ══ MYPAGE ══ -->
 <div class="page" id="mypage-page">
   <div class="profile-block">
-    <div class="avatar">🙋</div>
+    <div class="avatar" id="mypage-avatar-wrap">
+      <img id="mypage-photo" src="" alt="" style="width:50px;height:50px;border-radius:50%;object-fit:cover;display:none">
+      <span id="mypage-avatar-emoji" style="font-size:22px">🙋</span>
+    </div>
     <div style="flex:1;min-width:0">
       <div class="profile-name-wrap">
         <input class="profile-name-input" id="nickname-input" type="text" value="LowBite User" readonly>
         <button class="nickname-edit-btn" id="nickname-edit-btn" onclick="toggleNicknameEdit()">Edit</button>
       </div>
-      <div class="profile-sub">Exploring healthier recipes every day</div>
+      <div class="profile-sub" id="mypage-email">Exploring healthier recipes every day</div>
     </div>
+    <button onclick="signOut()" style="background:none;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">Sign out</button>
   </div>
   <div class="stat-grid">
     <div class="stat-block"><div class="stat-val">12</div><div class="stat-lbl">Converted</div></div>
@@ -970,9 +1018,18 @@ async function analyzeRecipe() {
   }
 
   try {
+    // Firebase 토큰 첨부 (로그인 상태일 때)
+    let authHeaders = { 'Content-Type': 'application/json' };
+    if (window.currentUser && window._firebaseAuth) {
+      try {
+        const token = await window._firebaseAuth.currentUser.getIdToken();
+        authHeaders['Authorization'] = 'Bearer ' + token;
+      } catch (e) { /* 토큰 취득 실패 시 그냥 진행 */ }
+    }
+
     const res = await fetch('/api/extract', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({ url, dietTypes: activeDiets })
     });
     const data = await res.json();
@@ -1298,9 +1355,102 @@ function saveRecipe(btn) {
   }, 2000);
 }
 
-/* ═══════ INIT ═══════ */
-renderSaved();
-updateStats();
+/* ═══════ FIREBASE AUTH ═══════ */
+// ★ 아래 firebaseConfig를 본인 프로젝트 설정으로 교체하세요
+const firebaseConfig = {
+  apiKey:            "AIzaSyD3cE0mrQRlcJsuUDsBTz7hvNuzf-CCG2g",
+  authDomain:        "lowbite1234.firebaseapp.com",
+  projectId:         "lowbite1234",
+  storageBucket:     "lowbite1234.firebasestorage.app",
+  messagingSenderId: "120488090970",
+  appId:             "1:120488090970:web:3c9248ac5f4144feece763"
+};
+
+import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ initializeApp }) => {
+  return Promise.all([
+    Promise.resolve(initializeApp(firebaseConfig)),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
+  ]);
+}).then(([app, { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut: fbSignOut }]) => {
+
+  const auth = getAuth(app);
+  window._firebaseAuth = auth;
+  const provider = new GoogleAuthProvider();
+
+  // 로그인 버튼
+  window.signInWithGoogle = async function () {
+    const btn     = document.getElementById('google-login-btn');
+    const loading = document.getElementById('login-loading');
+    const errEl   = document.getElementById('login-error');
+    btn.style.display = 'none';
+    loading.style.display = 'block';
+    errEl.style.display   = 'none';
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      btn.style.display     = 'flex';
+      loading.style.display = 'none';
+      errEl.style.display   = 'block';
+      errEl.textContent = e.code === 'auth/popup-closed-by-user'
+        ? 'Login cancelled. Please try again.'
+        : 'Login failed: ' + e.message;
+    }
+  };
+
+  // 로그아웃
+  window.signOut = async function () {
+    await fbSignOut(auth);
+  };
+
+  // 인증 상태 감시 — 앱의 핵심 게이트
+  onAuthStateChanged(auth, (user) => {
+    const overlay = document.getElementById('login-overlay');
+    if (user) {
+      // ── 로그인 성공 ──
+      overlay.classList.add('hidden');
+      setTimeout(() => { overlay.style.display = 'none'; }, 300);
+
+      // 네비게이션 아바타
+      const avatarImg = document.getElementById('nav-user-avatar');
+      const navIcon   = document.getElementById('nav-mypage-icon');
+      if (user.photoURL) {
+        avatarImg.src = user.photoURL;
+        avatarImg.classList.add('show');
+        navIcon.style.display = 'none';
+      }
+
+      // 마이페이지 프로필
+      const photoEl = document.getElementById('mypage-photo');
+      const emojiEl = document.getElementById('mypage-avatar-emoji');
+      if (user.photoURL) {
+        photoEl.src = user.photoURL;
+        photoEl.style.display = 'block';
+        emojiEl.style.display = 'none';
+      }
+      const nicknameInput = document.getElementById('nickname-input');
+      if (nicknameInput) nicknameInput.value = user.displayName || 'LowBite User';
+      const emailEl = document.getElementById('mypage-email');
+      if (emailEl) emailEl.textContent = user.email || '';
+
+      // 나중에 결제 연동 시 사용할 전역 유저 정보
+      window.currentUser = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL };
+
+    } else {
+      // ── 로그아웃 ──
+      overlay.style.display = 'flex';
+      overlay.classList.remove('hidden');
+      document.getElementById('google-login-btn').style.display = 'flex';
+      document.getElementById('login-loading').style.display    = 'none';
+      document.getElementById('login-error').style.display      = 'none';
+      window.currentUser = null;
+    }
+  });
+
+}).catch(err => {
+  console.error('Firebase 로드 실패:', err);
+  // Firebase 설정 전이라면 로그인 화면을 건너뛰고 앱 진입 허용 (개발 편의용)
+  document.getElementById('login-overlay').style.display = 'none';
+});
 </script>
 </body>
 </html>

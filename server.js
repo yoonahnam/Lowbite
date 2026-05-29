@@ -10,6 +10,40 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const USDA_API_KEY = process.env.USDA_API_KEY;
 
+// ── Firebase Admin (토큰 검증용) ──────────────────────────
+// npm install firebase-admin 후 사용
+// Vercel 환경변수에 FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY 추가
+let admin = null;
+try {
+  admin = require('firebase-admin');
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId:   process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey:  (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      }),
+    });
+  }
+} catch (e) {
+  console.warn('firebase-admin 미설치 또는 환경변수 없음 — 인증 미들웨어 비활성화:', e.message);
+}
+
+// 인증 미들웨어
+async function requireAuth(req, res, next) {
+  if (!admin) return next(); // firebase-admin 없으면 통과 (개발 편의)
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return res.status(401).json({ error: '로그인이 필요해요' });
+  try {
+    req.user = await admin.auth().verifyIdToken(token);
+    next();
+  } catch {
+    return res.status(401).json({ error: '인증이 만료됐어요. 다시 로그인해주세요.' });
+  }
+}
+// ─────────────────────────────────────────────────────────
+
 function extractYoutubeId(url) {
   const patterns = [
     /youtube\.com\/watch\?v=([^&]+)/,
@@ -130,7 +164,7 @@ async function getNutritionFromUSDA(ingredients, fetch) {
   return totalNutrition;
 }
 
-app.post('/api/extract', async (req, res) => {
+app.post('/api/extract', requireAuth, async (req, res) => {
   const { url, dietTypes } = req.body;
   const { default: fetch } = await import('node-fetch');
 
