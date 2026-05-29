@@ -29,7 +29,7 @@
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;display:flex;flex-direction:column}
 
 /* NAV */
-nav{position:sticky;top:0;z-index:200;background:rgba(249,249,247,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px}
+nav{position:sticky;top:0;z-index:200;background:rgba(249,249,247,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px}
 .logo{font-family:'Sora',sans-serif;font-weight:700;font-size:18px;color:var(--green);letter-spacing:-0.5px;cursor:pointer}
 .logo span{color:var(--accent)}
 .nav-icons{display:flex;gap:2px}
@@ -45,23 +45,24 @@ nav{position:sticky;top:0;z-index:200;background:rgba(249,249,247,0.92);backdrop
 .page.active{display:flex;flex-direction:column}
 
 /* ── HOME ── */
-#home-page{align-items:center;padding:48px 20px 40px}
-.pill-tag{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:100px;margin-bottom:26px;letter-spacing:.02em}
+#home-page{align-items:center;padding:0;justify-content:center;min-height:calc(100vh - 54px)}
+.home-inner{display:flex;flex-direction:column;align-items:center;width:100%;max-width:860px;padding:60px 40px 60px;margin:0 auto}
+.pill-tag{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);font-size:12px;font-weight:600;padding:6px 14px;border-radius:100px;margin-bottom:28px;letter-spacing:.02em}
 .pill-tag::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%}
-.hero-headline{font-family:'Sora',sans-serif;font-weight:600;font-size:clamp(26px,5vw,46px);line-height:1.18;text-align:center;max-width:560px;letter-spacing:-.03em;margin-bottom:12px}
+.hero-headline{font-family:'Sora',sans-serif;font-weight:700;font-size:clamp(32px,5vw,58px);line-height:1.15;text-align:center;max-width:700px;letter-spacing:-.03em;margin-bottom:16px}
 .hl-green{color:var(--green);font-style:italic}
 .hl-accent{color:var(--accent)}
-.hero-sub{text-align:center;font-size:14px;color:var(--text-secondary);max-width:400px;line-height:1.55;margin-bottom:30px}
-.input-row{display:flex;align-items:center;background:var(--surface);border:1.5px solid var(--border);border-radius:100px;padding:6px 6px 6px 16px;width:100%;max-width:520px;gap:8px;transition:border-color .15s,box-shadow .15s;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
-.input-row:focus-within{border-color:var(--green);box-shadow:0 0 0 3px rgba(45,138,94,.12)}
-.input-row>svg{color:var(--text-muted);flex-shrink:0;width:16px;height:16px}
-.input-row input{flex:1;border:none;outline:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text-primary)}
+.hero-sub{text-align:center;font-size:15px;color:var(--text-secondary);max-width:480px;line-height:1.6;margin-bottom:36px}
+.input-row{display:flex;align-items:center;background:var(--surface);border:1.5px solid var(--border);border-radius:100px;padding:8px 8px 8px 20px;width:100%;max-width:620px;gap:8px;transition:border-color .15s,box-shadow .15s;margin-bottom:16px;box-shadow:0 2px 16px rgba(0,0,0,.07)}
+.input-row:focus-within{border-color:var(--green);box-shadow:0 0 0 4px rgba(45,138,94,.12)}
+.input-row>svg{color:var(--text-muted);flex-shrink:0;width:18px;height:18px}
+.input-row input{flex:1;border:none;outline:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text-primary)}
 .input-row input::placeholder{color:var(--text-muted)}
-.btn-analyze{background:var(--green);color:#fff;border:none;border-radius:100px;padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;white-space:nowrap}
+.btn-analyze{background:var(--green);color:#fff;border:none;border-radius:100px;padding:12px 28px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;white-space:nowrap}
 .btn-analyze:hover{background:#246e4b}
 .btn-analyze:active{transform:scale(.97)}
-.diet-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.filter-chip{border:1.5px solid var(--border);background:var(--surface);border-radius:100px;padding:6px 14px;font-size:12.5px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .15s;user-select:none}
+.diet-filters{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.filter-chip{border:1.5px solid var(--border);background:var(--surface);border-radius:100px;padding:8px 18px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .15s;user-select:none}
 .filter-chip:hover{border-color:var(--green);color:var(--green)}
 .filter-chip.active{background:var(--green);color:#fff;border-color:var(--green)}
 
@@ -383,20 +384,22 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 
 <!-- ══ HOME ══ -->
 <div class="page active" id="home-page">
-  <div class="pill-tag">AI-Powered Diet Recipe Converter</div>
-  <h1 class="hero-headline">Paste a video link.<br>Get a <span class="hl-green">healthier</span> recipe <span class="hl-accent">instantly.</span></h1>
-  <p class="hero-sub">Drop any YouTube, Shorts, or Instagram link. Our AI extracts the recipe and transforms it into a diet version — with exact calories, macros, and ingredient swaps.</p>
-  <div class="input-row">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-    <input type="text" id="url-input" placeholder="Paste a YouTube, Shorts, or Instagram link here...">
-    <button class="btn-analyze" onclick="analyzeRecipe()">Analyze</button>
-  </div>
-  <div class="diet-filters">
-    <div class="filter-chip active" onclick="toggleChip(this)">Low Calorie</div>
-    <div class="filter-chip" onclick="toggleChip(this)">Keto</div>
-    <div class="filter-chip" onclick="toggleChip(this)">Vegan</div>
-    <div class="filter-chip" onclick="toggleChip(this)">High Protein</div>
-    <div class="filter-chip" onclick="toggleChip(this)">Gluten-Free</div>
+  <div class="home-inner">
+    <div class="pill-tag">AI-Powered Diet Recipe Converter</div>
+    <h1 class="hero-headline">Paste a video link.<br>Get a <span class="hl-green">healthier</span> recipe <span class="hl-accent">instantly.</span></h1>
+    <p class="hero-sub">Drop any YouTube, Shorts, or Instagram link. Our AI extracts the recipe and transforms it into a diet version — with exact calories, macros, and ingredient swaps.</p>
+    <div class="input-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+      <input type="text" id="url-input" placeholder="Paste a YouTube, Shorts, or Instagram link here...">
+      <button class="btn-analyze" onclick="analyzeRecipe()">Analyze</button>
+    </div>
+    <div class="diet-filters">
+      <div class="filter-chip active" onclick="toggleChip(this)">Low Calorie</div>
+      <div class="filter-chip" onclick="toggleChip(this)">Keto</div>
+      <div class="filter-chip" onclick="toggleChip(this)">Vegan</div>
+      <div class="filter-chip" onclick="toggleChip(this)">High Protein</div>
+      <div class="filter-chip" onclick="toggleChip(this)">Gluten-Free</div>
+    </div>
   </div>
 </div>
 
@@ -1372,6 +1375,12 @@ import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ ini
     import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
   ]);
 }).then(([app, { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut: fbSignOut }]) => {
+
+  // 브라우저 뒤로가기 방지
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', () => {
+    history.pushState(null, '', location.href);
+  });
 
   const auth = getAuth(app);
   window._firebaseAuth = auth;
