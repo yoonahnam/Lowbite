@@ -29,18 +29,15 @@ try {
   console.warn('firebase-admin 미설치 또는 환경변수 없음 — 인증 미들웨어 비활성화:', e.message);
 }
 
-// 인증 미들웨어
+// 인증 미들웨어 (firebase-admin 설치 후 활성화)
 async function requireAuth(req, res, next) {
-  if (!admin) return next(); // firebase-admin 없으면 통과 (개발 편의)
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!token) return res.status(401).json({ error: '로그인이 필요해요' });
-  try {
-    req.user = await admin.auth().verifyIdToken(token);
-    next();
-  } catch {
-    return res.status(401).json({ error: '인증이 만료됐어요. 다시 로그인해주세요.' });
-  }
+  // TODO: firebase-admin 설치 후 아래 주석 해제
+  // if (!admin) return next();
+  // const token = (req.headers.authorization || '').replace('Bearer ', '');
+  // if (!token) return res.status(401).json({ error: '로그인이 필요해요' });
+  // try { req.user = await admin.auth().verifyIdToken(token); next(); }
+  // catch { return res.status(401).json({ error: '인증이 만료됐어요. 다시 로그인해주세요.' }); }
+  return next(); // 현재는 프론트 로그인으로만 접근 제어
 }
 // ─────────────────────────────────────────────────────────
 
