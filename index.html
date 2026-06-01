@@ -334,18 +334,21 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 .compare-ingr-cell.swapped-row .cname{font-weight:700;color:var(--green)}
 .cname{flex:1;line-height:1.3;font-size:12px;word-break:break-word;overflow-wrap:anywhere}
 .camount{font-size:11px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0}
-.ingr-list-name{flex:1;min-width:0;word-break:break-word;overflow-wrap:anywhere;font-size:13px}
+.ingr-list-name{flex:1;min-width:0;font-size:13px;line-height:1.25}
 .ingr-list-amount{flex-shrink:0;white-space:nowrap}
 @media(max-width:480px){
-  .ingr-list-row{padding:7px 10px;gap:6px}
-  .ingr-list-name{font-size:12px}
+  .ingr-list-row{padding:6px 8px;gap:4px;align-items:center}
+  .ingr-list-name{font-size:11.5px;line-height:1.2;word-break:break-word;overflow-wrap:anywhere}
   .ingr-list-amount{font-size:11px}
-  .cart-btn{width:26px;height:26px}
+  .cart-btn{width:24px;height:24px;flex-shrink:0}
+  .cart-btn svg{width:12px;height:12px}
   nav{padding:0 14px}
-  .nutrition-row{grid-template-columns:68px 1fr auto auto auto;gap:3px;padding:6px 10px;font-size:11px}
+  .nutrition-row{grid-template-columns:68px 1fr auto auto auto;gap:3px;padding:6px 10px}
   .nutr-label{font-size:11px}
   .nutr-old,.nutr-new,.nutr-arrow{font-size:11px}
   .nutr-delta{font-size:10px;min-width:32px;padding:2px 4px}
+  /* 원본 쪽도 줄바꿈 방지 */
+  .section-card [style*="grid-template-columns:1fr 1fr"]{font-size:11.5px}
 }
 .compare-ingr-cell .cart-btn{width:24px;height:24px;flex-shrink:0;border-radius:6px}
 .compare-ingr-cell .cart-btn svg{width:11px;height:11px}
@@ -1108,13 +1111,13 @@ function renderResult(data) {
     const isSwapped = diet && swapMap[diet.name];
     ingrSideBySide += `<div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
       <div class="ingr-list-row" style="border-bottom:none;border-right:1px solid var(--border)">
-        ${orig ? `<span class="ingr-list-name" style="color:var(--accent)">${orig.name}</span>
-        <span class="ingr-list-amount">${orig.amount} ${orig.unit}</span>
-        <button class="cart-btn" data-name="${orig.name}" data-amount="${orig.amount} ${orig.unit}" title="Add to cart">${CART_SVG}</button>` : ''}
+        ${orig ? `<span class="ingr-list-name" style="color:var(--accent);flex:1;min-width:0">${orig.name}</span>
+        <span class="ingr-list-amount" style="flex-shrink:0;white-space:nowrap">${orig.amount} ${orig.unit}</span>
+        <button class="cart-btn" style="flex-shrink:0" data-name="${orig.name}" data-amount="${orig.amount} ${orig.unit}" title="Add to cart">${CART_SVG}</button>` : ''}
       </div>
-      <div class="ingr-list-row" style="border-bottom:none;background:var(--green-light);flex-wrap:wrap;align-items:flex-start">
-        ${diet ? `<span class="ingr-list-name ${isSwapped ? 'swapped' : ''}" style="color:var(--green);flex:1;min-width:0;word-break:break-word;overflow-wrap:anywhere">${diet.name}${isSwapped ? `<br><span style="font-size:10px;color:var(--text-muted);text-decoration:line-through;font-weight:400">${swapMap[diet.name]}</span>` : ''}</span>
-        <span class="ingr-list-amount" style="flex-shrink:0;white-space:nowrap;margin-left:4px">${diet.amount} ${diet.unit}</span>
+      <div class="ingr-list-row" style="border-bottom:none;background:var(--green-light)">
+        ${diet ? `<span class="ingr-list-name ${isSwapped ? 'swapped' : ''}" style="color:var(--green);flex:1;min-width:0">${diet.name}</span>
+        <span class="ingr-list-amount" style="flex-shrink:0;white-space:nowrap">${diet.amount} ${diet.unit}</span>
         <button class="cart-btn" style="flex-shrink:0" data-name="${diet.name}" data-amount="${diet.amount} ${diet.unit}" title="Add to cart">${CART_SVG}</button>` : ''}
       </div>
     </div>`;
