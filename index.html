@@ -334,23 +334,21 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 .compare-ingr-cell.swapped-row .cname{font-weight:700;color:var(--green)}
 .cname{flex:1;line-height:1.3;font-size:12px;word-break:break-word;overflow-wrap:anywhere}
 .camount{font-size:11px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0}
+.ingr-list-name{flex:1;min-width:0;word-break:break-word;overflow-wrap:anywhere;font-size:13px}
+.ingr-list-amount{flex-shrink:0;white-space:nowrap}
+@media(max-width:480px){
+  .ingr-list-row{padding:7px 10px;gap:6px}
+  .ingr-list-name{font-size:12px}
+  .ingr-list-amount{font-size:11px}
+  .cart-btn{width:26px;height:26px}
+  nav{padding:0 14px}
+  .nutrition-row{grid-template-columns:68px 1fr auto auto auto;gap:3px;padding:6px 10px;font-size:11px}
+  .nutr-label{font-size:11px}
+  .nutr-old,.nutr-new,.nutr-arrow{font-size:11px}
+  .nutr-delta{font-size:10px;min-width:32px;padding:2px 4px}
+}
 .compare-ingr-cell .cart-btn{width:24px;height:24px;flex-shrink:0;border-radius:6px}
 .compare-ingr-cell .cart-btn svg{width:11px;height:11px}
-/* ── MOBILE COMPARE FIX ── */
-@media (max-width:480px){
-  .compare-ingr-cell{padding:6px 6px;gap:2px;min-height:32px}
-  .cname{font-size:11px}
-  .camount{font-size:10px}
-  .compare-ingr-cell .cart-btn{width:20px;height:20px;border-radius:5px}
-  .compare-ingr-cell .cart-btn svg{width:9px;height:9px}
-  .compare-col-header{padding:8px 7px 6px;font-size:9px}
-  .swap-from{display:none}
-  .nutrition-row{grid-template-columns:72px 1fr auto auto auto;gap:4px;padding:6px 10px}
-  .nutr-label{font-size:12px}
-  .nutr-old,.nutr-new,.nutr-arrow{font-size:12px}
-  .nutr-delta{font-size:10px;min-width:36px;padding:2px 4px}
-  nav{padding:0 16px}
-}
 </style>
 </head>
 <body>
@@ -1114,11 +1112,10 @@ function renderResult(data) {
         <span class="ingr-list-amount">${orig.amount} ${orig.unit}</span>
         <button class="cart-btn" data-name="${orig.name}" data-amount="${orig.amount} ${orig.unit}" title="Add to cart">${CART_SVG}</button>` : ''}
       </div>
-      <div class="ingr-list-row" style="border-bottom:none;background:var(--green-light)">
-        ${diet ? `<span class="ingr-list-name ${isSwapped ? 'swapped' : ''}" style="color:var(--green)">${diet.name}</span>
-        ${isSwapped ? `<span style="font-size:11px;color:var(--text-muted);text-decoration:line-through;white-space:nowrap">${swapMap[diet.name]}</span><span style="color:var(--text-muted);font-size:11px">→</span>` : ''}
-        <span class="ingr-list-amount">${diet.amount} ${diet.unit}</span>
-        <button class="cart-btn" data-name="${diet.name}" data-amount="${diet.amount} ${diet.unit}" title="Add to cart">${CART_SVG}</button>` : ''}
+      <div class="ingr-list-row" style="border-bottom:none;background:var(--green-light);flex-wrap:wrap;align-items:flex-start">
+        ${diet ? `<span class="ingr-list-name ${isSwapped ? 'swapped' : ''}" style="color:var(--green);flex:1;min-width:0;word-break:break-word;overflow-wrap:anywhere">${diet.name}${isSwapped ? `<br><span style="font-size:10px;color:var(--text-muted);text-decoration:line-through;font-weight:400">${swapMap[diet.name]}</span>` : ''}</span>
+        <span class="ingr-list-amount" style="flex-shrink:0;white-space:nowrap;margin-left:4px">${diet.amount} ${diet.unit}</span>
+        <button class="cart-btn" style="flex-shrink:0" data-name="${diet.name}" data-amount="${diet.amount} ${diet.unit}" title="Add to cart">${CART_SVG}</button>` : ''}
       </div>
     </div>`;
   }
