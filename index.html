@@ -22,24 +22,24 @@
           min-height:100vh;padding:32px;text-align:center;font-family:sans-serif;background:#f9f9f7">
           <div style="font-size:56px;margin-bottom:20px">🌿</div>
           <div style="font-size:22px;font-weight:700;margin-bottom:10px;color:#111;letter-spacing:-0.5px">
-            외부 브라우저에서 열어주세요
+            Open in your browser
           </div>
           <div style="font-size:14px;color:#777;line-height:1.7;margin-bottom:28px;max-width:280px">
-            Google 로그인은 카카오톡·에브리타임 등<br>앱 내 브라우저에서 지원되지 않아요.<br>
-            Chrome 또는 Safari로 열어주세요 😊
+            Google Sign-In is not supported<br>inside in-app browsers.<br>
+            Please open this page in Chrome or Safari 😊
           </div>
           ${isAndroid
             ? `<a href="${chromeIntent}"
                 style="background:#2d8a5e;color:#fff;padding:14px 32px;border-radius:100px;
                   font-size:15px;font-weight:600;text-decoration:none;display:inline-block;margin-bottom:12px">
-                🌐 Chrome으로 열기
+                🌐 Open in Chrome
               </a>`
             : `<div style="background:#eef7f2;border-radius:14px;padding:16px 20px;font-size:13px;color:#2d8a5e;font-weight:600;max-width:280px">
-                주소창에서 Safari로 열기를 눌러주세요
+                Tap "Open in Safari" from the address bar
               </div>`
           }
           <div style="margin-top:20px;font-size:12px;color:#aaa">
-            또는 주소를 복사해서 브라우저에 붙여넣으세요<br>
+            Or copy the address and paste it in your browser<br>
             <span style="color:#2d8a5e;font-weight:600;word-break:break-all">${currentUrl}</span>
           </div>
         </div>`;
