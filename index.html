@@ -1401,7 +1401,7 @@ import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ ini
     Promise.resolve(initializeApp(firebaseConfig)),
     import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
   ]);
-}).then(([app, { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut: fbSignOut }]) => {
+}).then(([app, { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut: fbSignOut }]) => {
 
   // 브라우저 뒤로가기 방지
   history.pushState(null, '', location.href);
@@ -1413,7 +1413,25 @@ import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ ini
   window._firebaseAuth = auth;
   const provider = new GoogleAuthProvider();
 
-  // 로그인 버튼
+  // 리디렉트 후 돌아왔을 때 결과 처리
+  getRedirectResult(auth).then((result) => {
+    if (result && result.user) {
+      // 로그인 성공 — onAuthStateChanged가 자동으로 처리함
+      console.log('Redirect login success:', result.user.displayName);
+    }
+  }).catch((e) => {
+    const errEl = document.getElementById('login-error');
+    const btn   = document.getElementById('google-login-btn');
+    const loading = document.getElementById('login-loading');
+    if (errEl) {
+      btn.style.display     = 'flex';
+      loading.style.display = 'none';
+      errEl.style.display   = 'block';
+      errEl.textContent = 'Login failed: ' + e.message;
+    }
+  });
+
+  // 로그인 버튼 — WebView/인앱브라우저 호환을 위해 redirect 방식 사용
   window.signInWithGoogle = async function () {
     const btn     = document.getElementById('google-login-btn');
     const loading = document.getElementById('login-loading');
@@ -1422,14 +1440,13 @@ import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ ini
     loading.style.display = 'block';
     errEl.style.display   = 'none';
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
+      // 이 줄 이후 코드는 실행되지 않음 — 페이지가 Google로 이동함
     } catch (e) {
       btn.style.display     = 'flex';
       loading.style.display = 'none';
       errEl.style.display   = 'block';
-      errEl.textContent = e.code === 'auth/popup-closed-by-user'
-        ? 'Login cancelled. Please try again.'
-        : 'Login failed: ' + e.message;
+      errEl.textContent = 'Login failed: ' + e.message;
     }
   };
 
