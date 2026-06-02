@@ -3,6 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+// WebView 감지 → 외부 브라우저로 유도
+(function() {
+  const ua = navigator.userAgent;
+  const isWebView = /KAKAOTALK|Instagram|FBAN|FBAV|Line|NaverApp|everytime/i.test(ua)
+    || (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i.test(ua))
+    || (/Android/.test(ua) && /Version\/\d/.test(ua) && /Chrome\/\d/.test(ua) === false);
+
+  if (isWebView) {
+    document.addEventListener('DOMContentLoaded', function() {
+      const currentUrl = location.href;
+      const isAndroid = /Android/i.test(ua);
+      const chromeIntent = 'intent://' + currentUrl.replace(/https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+
+      document.body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+          min-height:100vh;padding:32px;text-align:center;font-family:sans-serif;background:#f9f9f7">
+          <div style="font-size:56px;margin-bottom:20px">🌿</div>
+          <div style="font-size:22px;font-weight:700;margin-bottom:10px;color:#111;letter-spacing:-0.5px">
+            외부 브라우저에서 열어주세요
+          </div>
+          <div style="font-size:14px;color:#777;line-height:1.7;margin-bottom:28px;max-width:280px">
+            Google 로그인은 카카오톡·에브리타임 등<br>앱 내 브라우저에서 지원되지 않아요.<br>
+            Chrome 또는 Safari로 열어주세요 😊
+          </div>
+          ${isAndroid
+            ? `<a href="${chromeIntent}"
+                style="background:#2d8a5e;color:#fff;padding:14px 32px;border-radius:100px;
+                  font-size:15px;font-weight:600;text-decoration:none;display:inline-block;margin-bottom:12px">
+                🌐 Chrome으로 열기
+              </a>`
+            : `<div style="background:#eef7f2;border-radius:14px;padding:16px 20px;font-size:13px;color:#2d8a5e;font-weight:600;max-width:280px">
+                주소창에서 Safari로 열기를 눌러주세요
+              </div>`
+          }
+          <div style="margin-top:20px;font-size:12px;color:#aaa">
+            또는 주소를 복사해서 브라우저에 붙여넣으세요<br>
+            <span style="color:#2d8a5e;font-weight:600;word-break:break-all">${currentUrl}</span>
+          </div>
+        </div>`;
+    });
+  }
+})();
+</script>
 <title>LowBite — AI Diet Recipe Converter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
