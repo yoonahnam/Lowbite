@@ -337,11 +337,14 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 #login-overlay{
   position:fixed;inset:0;z-index:9999;
   background:var(--bg);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  display:none;
+  flex-direction:column;align-items:center;justify-content:center;
   padding:32px 24px;
-  transition:opacity .3s;
+  opacity:1;
+  transition:opacity .25s;
 }
-#login-overlay.hidden{opacity:0;pointer-events:none}
+#login-overlay.visible{display:flex;}
+#login-overlay.fade-out{opacity:0;pointer-events:none;}
 .login-logo{font-family:'Sora',sans-serif;font-weight:700;font-size:32px;color:var(--green);letter-spacing:-1px;margin-bottom:6px}
 .login-logo span{color:var(--accent)}
 .login-tagline{font-size:14px;color:var(--text-secondary);text-align:center;max-width:280px;line-height:1.55;margin-bottom:40px}
@@ -397,6 +400,10 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 .compare-ingr-cell .cart-btn{width:24px;height:24px;flex-shrink:0;border-radius:6px}
 .compare-ingr-cell .cart-btn svg{width:11px;height:11px}
 </style>
+<!-- Firebase compat SDK (안정적인 compat 방식) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <!-- Vercel Analytics -->
 <script defer src="/_vercel/insights/script.js"></script>
 <!-- Google Analytics -->
@@ -918,11 +925,7 @@ function updateStats() {
   }
 }
 
-const savedRecipes = [
-  { id:1, emoji:'🍗', name:'Diet Honey Garlic Chicken',   meta:'Saved today · Low Calorie',       kcal:'430 kcal' },
-  { id:2, emoji:'🥗', name:'Chicken Breast Quinoa Salad', meta:'Saved 3 days ago · High Protein',  kcal:'310 kcal' },
-  { id:3, emoji:'🍜', name:'Tofu Avocado Pasta',           meta:'Saved 1 week ago · Vegan',         kcal:'380 kcal' },
-];
+const savedRecipes = []; // Firestore에서 로그인 후 로드됨
 
 const cookData = {
   original: {
@@ -1008,6 +1011,11 @@ function saveAllergies() {
 /* ═══════ CONVERSION HISTORY ═══════ */
 const conversionHistory = [];
 
+function fmtDate(d) {
+  try { return new Date(d).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); }
+  catch { return d; }
+}
+
 function renderHistory() {
   const el = document.getElementById('history-list');
   if (conversionHistory.length === 0) {
@@ -1019,7 +1027,7 @@ function renderHistory() {
       <div class="history-icon">${h.emoji}</div>
       <div class="history-info">
         <div class="history-name">${h.name}</div>
-        <div class="history-meta">${h.date}</div>
+        <div class="history-meta">${fmtDate(h.date)}</div>
       </div>
       <div style="text-align:right">
         <div class="history-kcal">${h.diet} kcal</div>
@@ -1124,6 +1132,7 @@ async function analyzeRecipe() {
 const CART_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.98-1.68l1.62-9.9H6"/></svg>`;
 
 function renderResult(data) {
+  currentResult = data; // Firestore 저장용으로 보관
   const o = data.original;
   const d = data.diet;
   const swapMap = {};
@@ -1228,14 +1237,21 @@ function renderResult(data) {
   userStats.converted++;
   userStats.totalOrigCal += o.nutrition.calories || 0;
   userStats.totalDietCal += d.nutrition.calories || 0;
-  conversionHistory.unshift({
+  const histEntry = {
     emoji: '🍽️',
     name: d.title,
-    date: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}),
+    date: new Date().toISOString(),
     original: o.nutrition.calories || 0,
     diet: d.nutrition.calories || 0,
-  });
+  };
+  conversionHistory.unshift(histEntry);
   updateStats();
+
+  // Firestore에 히스토리 저장
+  if (window.currentUser && window._db) {
+    window._db.collection('users').doc(window.currentUser.uid)
+      .collection('history').add(histEntry).catch(e => console.error('history save:', e));
+  }
 }
 
 // Multi-select chips
@@ -1275,15 +1291,21 @@ function openCook(mode) {
 /* ═══════ COMPLETED → DIARY ═══════ */
 function markCompleted() {
   const d = cookData[currentCookMode];
-  diaryEntries.unshift({
+  const entry = {
     mode:  currentCookMode,
     emoji: currentCookMode === 'diet' ? '🥗' : '🍗',
     name:  d.title,
     kcal:  d.kcal,
-    date:  new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}),
-  });
-  // Show diary button on My Page
+    date:  new Date().toISOString(),
+  };
+  diaryEntries.unshift(entry);
   document.getElementById('diary-menu-item').style.display = 'flex';
+
+  // Firestore에 다이어리 저장
+  if (window.currentUser && window._db) {
+    window._db.collection('users').doc(window.currentUser.uid)
+      .collection('diary').add(entry).catch(e => console.error('diary save:', e));
+  }
 
   const btn = document.querySelector('.btn-completed');
   btn.textContent = 'Logged to Diary!';
@@ -1306,7 +1328,7 @@ function renderDiary() {
       <div class="diary-icon ${e.mode}">${e.emoji}</div>
       <div class="diary-info">
         <div class="diary-name">${e.name}</div>
-        <div class="diary-meta">${e.date} · ${e.mode === 'diet' ? 'Diet Recipe' : 'Original Recipe'}</div>
+        <div class="diary-meta">${fmtDate(e.date)} · ${e.mode === 'diet' ? 'Diet Recipe' : 'Original Recipe'}</div>
       </div>
       <div class="diary-kcal">${e.kcal}</div>
     </div>
@@ -1416,21 +1438,50 @@ function deleteChecked() {
 }
 
 /* ═══════ SAVE RECIPE ═══════ */
-function saveRecipe(btn) {
-  btn.textContent = '✅ Saved!';
-  btn.style.borderColor = 'var(--green)';
-  btn.style.color = 'var(--green)';
-  userStats.saved++;
-  updateStats();
-  setTimeout(() => {
+// currentResult는 analyzeRecipe 후 renderResult에서 세팅됨
+let currentResult = null;
+
+async function saveRecipe(btn) {
+  if (!window.currentUser) { alert('Please sign in first.'); return; }
+  if (!currentResult) { alert('No recipe to save.'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    const uid = window.currentUser.uid;
+    const colRef = window._db.collection('users').doc(uid).collection('savedRecipes');
+    const docData = {
+      emoji: '🍽️',
+      name: currentResult.diet.title,
+      meta: 'Saved just now · ' + (currentResult.dietTypes || 'Low Calorie'),
+      kcal: (currentResult.diet.nutrition.calories || 0) + ' kcal',
+      originalKcal: currentResult.original.nutrition.calories || 0,
+      dietKcal: currentResult.diet.nutrition.calories || 0,
+      original: currentResult.original,
+      diet: currentResult.diet,
+      savedAt: new Date().toISOString(),
+    };
+    await colRef.add(docData);
+    userStats.saved++;
+    updateStats();
+    btn.textContent = '✅ Saved!';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.color = 'var(--green)';
+    // 로컬 배열에도 바로 반영
+    savedRecipes.unshift({ id: Date.now(), ...docData });
+    setTimeout(() => {
+      btn.textContent = '🔖 Save This Recipe';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 2000);
+  } catch(e) {
     btn.textContent = '🔖 Save This Recipe';
-    btn.style.borderColor = '';
-    btn.style.color = '';
-  }, 2000);
+    btn.disabled = false;
+    alert('Save failed: ' + e.message);
+  }
 }
 
-/* ═══════ FIREBASE AUTH ═══════ */
-// ★ 아래 firebaseConfig를 본인 프로젝트 설정으로 교체하세요
+/* ═══════ FIREBASE AUTH + FIRESTORE ═══════ */
 const firebaseConfig = {
   apiKey:            "AIzaSyD3cE0mrQRlcJsuUDsBTz7hvNuzf-CCG2g",
   authDomain:        "lowbite1234.firebaseapp.com",
@@ -1440,74 +1491,70 @@ const firebaseConfig = {
   appId:             "1:120488090970:web:3c9248ac5f4144feece763"
 };
 
-import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ initializeApp }) => {
-  return Promise.all([
-    Promise.resolve(initializeApp(firebaseConfig)),
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')
-  ]);
-}).then(([app, { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut: fbSignOut }]) => {
+// 오버레이를 처음엔 숨겨서 auth 확인 전에 깜빡이지 않게
+document.getElementById('login-overlay').style.display = 'none';
 
-  // 브라우저 뒤로가기 방지
-  history.pushState(null, '', location.href);
-  window.addEventListener('popstate', () => {
-    history.pushState(null, '', location.href);
-  });
+// ── 오버레이 제어 (단일 진입점)
+function showLoginOverlay() {
+  const el = document.getElementById('login-overlay');
+  el.classList.remove('fade-out');
+  el.classList.add('visible');
+  document.getElementById('google-login-btn').style.display = 'flex';
+  document.getElementById('login-loading').style.display    = 'none';
+  document.getElementById('login-error').style.display      = 'none';
+}
+function hideLoginOverlay() {
+  const el = document.getElementById('login-overlay');
+  el.classList.add('fade-out');
+  setTimeout(() => {
+    el.classList.remove('visible', 'fade-out');
+  }, 280);
+}
 
-  const auth = getAuth(app);
+// Firebase compat SDK는 위 <script> 태그로 이미 로드됨
+(function initFirebase() {
+  const app  = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
   window._firebaseAuth = auth;
-  const provider = new GoogleAuthProvider();
+  window._db = db;
 
-  // 리디렉트 후 돌아왔을 때 결과 처리
-  getRedirectResult(auth).then((result) => {
-    if (result && result.user) {
-      // 로그인 성공 — onAuthStateChanged가 자동으로 처리함
-      console.log('Redirect login success:', result.user.displayName);
-    }
-  }).catch((e) => {
-    const errEl = document.getElementById('login-error');
-    const btn   = document.getElementById('google-login-btn');
-    const loading = document.getElementById('login-loading');
-    if (errEl) {
-      btn.style.display     = 'flex';
-      loading.style.display = 'none';
-      errEl.style.display   = 'block';
-      errEl.textContent = 'Login failed: ' + e.message;
-    }
-  });
+  const provider = new firebase.auth.GoogleAuthProvider();
 
-  // 로그인 버튼 — WebView/인앱브라우저 호환을 위해 redirect 방식 사용
+  // ── 로그인 버튼
   window.signInWithGoogle = async function () {
     const btn     = document.getElementById('google-login-btn');
     const loading = document.getElementById('login-loading');
     const errEl   = document.getElementById('login-error');
-    btn.style.display = 'none';
+    btn.style.display     = 'none';
     loading.style.display = 'block';
     errEl.style.display   = 'none';
     try {
-      await signInWithRedirect(auth, provider);
-      // 이 줄 이후 코드는 실행되지 않음 — 페이지가 Google로 이동함
+      await auth.signInWithPopup(provider);
     } catch (e) {
       btn.style.display     = 'flex';
       loading.style.display = 'none';
       errEl.style.display   = 'block';
-      errEl.textContent = 'Login failed: ' + e.message;
+      errEl.textContent = e.code === 'auth/popup-closed-by-user'
+        ? 'Login window was closed. Please try again.'
+        : 'Login failed: ' + e.message;
     }
   };
 
-  // 로그아웃
-  window.signOut = async function () {
-    await fbSignOut(auth);
-  };
+  // ── 로그아웃
+  window.signOut = async function () { await auth.signOut(); };
+  window.doSignOut = window.signOut;
 
-  // 인증 상태 감시 — 앱의 핵심 게이트
-  onAuthStateChanged(auth, (user) => {
-    const overlay = document.getElementById('login-overlay');
+  // ── 인증 상태 감시 (단일 진입점)
+  let authResolved = false;
+  auth.onAuthStateChanged(async (user) => {
     if (user) {
-      // ── 로그인 성공 ──
-      overlay.classList.add('hidden');
-      setTimeout(() => { overlay.style.display = 'none'; }, 300);
+      hideLoginOverlay();
 
-      // 네비게이션 아바타
+      // 네비 아바타
       const avatarImg = document.getElementById('nav-user-avatar');
       const navIcon   = document.getElementById('nav-mypage-icon');
       if (user.photoURL) {
@@ -1515,7 +1562,6 @@ import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ ini
         avatarImg.classList.add('show');
         navIcon.style.display = 'none';
       }
-
       // 마이페이지 프로필
       const photoEl = document.getElementById('mypage-photo');
       const emojiEl = document.getElementById('mypage-avatar-emoji');
@@ -1529,25 +1575,69 @@ import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').then(({ ini
       const emailEl = document.getElementById('mypage-email');
       if (emailEl) emailEl.textContent = user.email || '';
 
-      // 나중에 결제 연동 시 사용할 전역 유저 정보
       window.currentUser = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL };
+      authResolved = true;
+      await loadUserData(user.uid);
 
     } else {
-      // ── 로그아웃 ──
-      overlay.style.display = 'flex';
-      overlay.classList.remove('hidden');
-      document.getElementById('google-login-btn').style.display = 'flex';
-      document.getElementById('login-loading').style.display    = 'none';
-      document.getElementById('login-error').style.display      = 'none';
+      // 최초 로드 시 null은 약간 딜레이 후 표시 (순간 깜빡임 방지)
+      const delay = authResolved ? 0 : 100;
+      setTimeout(() => {
+        if (!window.currentUser) showLoginOverlay();
+      }, delay);
+      authResolved = true;
       window.currentUser = null;
+      savedRecipes.length = 0;
+      conversionHistory.length = 0;
+      diaryEntries.length = 0;
+      userStats.converted = 0; userStats.saved = 0;
+      userStats.totalOrigCal = 0; userStats.totalDietCal = 0;
+      updateStats();
     }
   });
 
-}).catch(err => {
-  console.error('Firebase 로드 실패:', err);
-  // Firebase 설정 전이라면 로그인 화면을 건너뛰고 앱 진입 허용 (개발 편의용)
-  document.getElementById('login-overlay').style.display = 'none';
-});
+})();
+
+/* ─── Firestore 데이터 로드 ─── */
+async function loadUserData(uid) {
+  const db = window._db;
+  if (!db) return;
+  try {
+    // 저장된 레시피
+    const savedSnap = await db.collection('users').doc(uid).collection('savedRecipes')
+      .orderBy('savedAt', 'desc').limit(50).get();
+    savedRecipes.length = 0;
+    savedSnap.forEach(doc => savedRecipes.push({ id: doc.id, ...doc.data() }));
+
+    // 변환 히스토리
+    const histSnap = await db.collection('users').doc(uid).collection('history')
+      .orderBy('date', 'desc').limit(50).get();
+    conversionHistory.length = 0;
+    histSnap.forEach(doc => conversionHistory.push({ id: doc.id, ...doc.data() }));
+
+    // 다이어리
+    const diarySnap = await db.collection('users').doc(uid).collection('diary')
+      .orderBy('date', 'desc').limit(50).get();
+    diaryEntries.length = 0;
+    diarySnap.forEach(doc => diaryEntries.push({ id: doc.id, ...doc.data() }));
+
+    // 통계 재계산
+    userStats.converted = conversionHistory.length;
+    userStats.saved = savedRecipes.length;
+    userStats.totalOrigCal = conversionHistory.reduce((s, h) => s + (h.original || 0), 0);
+    userStats.totalDietCal = conversionHistory.reduce((s, h) => s + (h.diet || 0), 0);
+    updateStats();
+
+    // 다이어리 있으면 메뉴 표시
+    if (diaryEntries.length > 0) {
+      document.getElementById('diary-menu-item').style.display = 'flex';
+    }
+
+    console.log(`Data loaded: ${savedRecipes.length} saved, ${conversionHistory.length} history`);
+  } catch(e) {
+    console.error('Firestore 로드 실패:', e.message);
+  }
+}
 </script>
 </body>
 </html>
