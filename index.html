@@ -399,6 +399,45 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 }
 .compare-ingr-cell .cart-btn{width:24px;height:24px;flex-shrink:0;border-radius:6px}
 .compare-ingr-cell .cart-btn svg{width:11px;height:11px}
+
+/* ── 로딩 스피너 ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-dots {
+  0%,80%,100% { opacity: .25; transform: scale(.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+.loading-spinner-wrap { display:flex;flex-direction:column;align-items:center;gap:16px; }
+.loading-spinner {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 3.5px solid var(--green-mid);
+  border-top-color: var(--green);
+  animation: spin .85s linear infinite;
+}
+.loading-dots { display:flex;gap:6px;align-items:center; }
+.loading-dots span {
+  width:7px;height:7px;border-radius:50%;background:var(--green);
+  animation: pulse-dots 1.2s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+.loading-status { font-size:13px;color:var(--text-secondary);font-weight:500;text-align:center;line-height:1.6;max-width:260px; }
+.loading-substatus { font-size:11.5px;color:var(--text-muted);text-align:center;margin-top:-8px; }
+
+/* ── 에러 상태 ── */
+.result-error-wrap { display:none;flex-direction:column;align-items:center;gap:10px;padding:48px 24px;text-align:center; }
+.result-error-wrap.show { display:flex; }
+.result-error-icon { font-size:36px; }
+.result-error-msg { font-size:13.5px;font-weight:600;color:var(--text-primary);max-width:280px;line-height:1.5; }
+.result-error-sub { font-size:12px;color:var(--text-muted);max-width:260px;line-height:1.5; }
+
+/* ── 1인분 뱃지 ── */
+.serving-badge {
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--green-light);color:var(--green);
+  border:1px solid var(--green-mid);border-radius:100px;
+  font-size:11px;font-weight:700;padding:3px 10px;
+  margin-bottom:10px;
+}
 </style>
 <!-- Firebase compat SDK (안정적인 compat 방식) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -485,13 +524,22 @@ select.form-input{appearance:none;background:var(--surface);cursor:pointer;paddi
 <!-- ══ RESULT ══ -->
 <div class="page" id="result-page">
 
-  <!-- Empty state: shown after analysis, waiting for real API -->
-  <div id="result-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:48px 24px;text-align:center;gap:12px">
-    <div style="font-size:40px">🔗</div>
-    <div style="font-family:'Sora',sans-serif;font-size:17px;font-weight:600;color:var(--text-primary)">Link submitted!</div>
-    <div style="font-size:13px;color:var(--text-secondary);max-width:300px;line-height:1.6" id="result-url-display"></div>
-    <div style="font-size:13px;color:var(--text-muted);max-width:280px;line-height:1.6;margin-top:4px">Recipe analysis requires a real API connection. Results will appear here once the backend is set up.</div>
-    <button class="btn-secondary" style="margin-top:8px;flex:none;padding:10px 24px" onclick="showPage('home')">← Try another link</button>
+  <!-- 로딩/에러 상태 -->
+  <div id="result-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:48px 24px;text-align:center;gap:14px">
+    <!-- 로딩 중 -->
+    <div class="loading-spinner-wrap" id="loading-spinner-wrap">
+      <div class="loading-spinner"></div>
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div class="loading-status" id="result-url-display">Analyzing your recipe with AI...</div>
+      <div class="loading-substatus">This usually takes 15–30 seconds</div>
+    </div>
+    <!-- 에러 상태 -->
+    <div class="result-error-wrap" id="result-error-wrap">
+      <div class="result-error-icon">⚠️</div>
+      <div class="result-error-msg" id="result-error-msg">Something went wrong</div>
+      <div class="result-error-sub" id="result-error-sub">Please check the link and try again.</div>
+      <button class="btn-secondary" style="margin-top:8px;flex:none;padding:10px 24px" onclick="resetToHome()">← Try another link</button>
+    </div>
   </div>
 
   <!-- Real content: hidden until API returns data -->
@@ -1092,7 +1140,9 @@ async function analyzeRecipe() {
   showPage('result');
   document.getElementById('result-content').style.display = 'none';
   document.getElementById('result-empty').style.display = 'flex';
-  document.getElementById('result-url-display').textContent = 'Analyzing your recipe with AI... (15–30 seconds)';
+  document.getElementById('loading-spinner-wrap').style.display = 'flex';
+  document.getElementById('result-error-wrap').classList.remove('show');
+  document.getElementById('result-url-display').textContent = 'Analyzing your recipe with AI...';
 
   const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
   if (isYoutube) {
@@ -1117,12 +1167,12 @@ async function analyzeRecipe() {
     });
     const data = await res.json();
     if (!data.success) {
-      document.getElementById('result-url-display').textContent = 'Error: ' + (data.error || 'Please try again');
+      showResultError(data.error || 'Could not analyze this recipe.', 'Please check the link and try again.');
       return;
     }
     renderResult(data);
   } catch (err) {
-    document.getElementById('result-url-display').textContent = 'Server connection error. Please try again.';
+    showResultError('Server connection error.', 'Please check your internet and try again.');
   } finally {
     btn.textContent = 'Analyze';
     btn.disabled = false;
@@ -1130,6 +1180,20 @@ async function analyzeRecipe() {
 }
 
 const CART_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.98-1.68l1.62-9.9H6"/></svg>`;
+
+function showResultError(msg, sub) {
+  document.getElementById('loading-spinner-wrap').style.display = 'none';
+  const wrap = document.getElementById('result-error-wrap');
+  wrap.classList.add('show');
+  document.getElementById('result-error-msg').textContent = msg;
+  document.getElementById('result-error-sub').textContent = sub || '';
+}
+
+function resetToHome() {
+  showPage('home');
+  const btn = document.querySelector('.btn-analyze');
+  if (btn) { btn.textContent = 'Analyze'; btn.disabled = false; }
+}
 
 function renderResult(data) {
   currentResult = data; // Firestore 저장용으로 보관
@@ -1193,6 +1257,17 @@ function renderResult(data) {
   document.querySelector('.kcal-badge').textContent = `-${savedCal} kcal (${pct}% less)`;
   document.getElementById('result-recipe-title').textContent = d.title;
 
+  // 1인분 뱃지 (없으면 생성)
+  let servingBadge = document.getElementById('serving-badge');
+  if (!servingBadge) {
+    servingBadge = document.createElement('div');
+    servingBadge.id = 'serving-badge';
+    servingBadge.className = 'serving-badge';
+    const titleEl = document.getElementById('result-recipe-title');
+    titleEl.parentNode.insertBefore(servingBadge, titleEl);
+  }
+  servingBadge.innerHTML = '🍽️ Per 1 Serving';
+
   document.querySelector('.result-body').innerHTML = `
     <div class="section-card">
       <div class="section-header">Nutrition Comparison</div>
@@ -1231,6 +1306,8 @@ function renderResult(data) {
   };
 
   document.getElementById('result-empty').style.display = 'none';
+  document.getElementById('loading-spinner-wrap').style.display = 'flex'; // 다음 로딩 위해 초기화
+  document.getElementById('result-error-wrap').classList.remove('show');
   document.getElementById('result-content').style.display = 'flex';
 
   // 통계 & 히스토리 업데이트

@@ -112,11 +112,75 @@ function isKorean(text) {
   return /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
 }
 
+// ── 단위 매핑 테이블 (비정형 → g/ml 표준값) ─────────────────────
+const UNIT_MAP = {
+  // 부피(ml)
+  '큰술': { value: 15, unit: 'ml' }, '밥숟가락': { value: 15, unit: 'ml' },
+  'tablespoon': { value: 15, unit: 'ml' }, 'tbsp': { value: 15, unit: 'ml' }, 'T': { value: 15, unit: 'ml' },
+  '작은술': { value: 5, unit: 'ml' }, '찻숟가락': { value: 5, unit: 'ml' },
+  'teaspoon': { value: 5, unit: 'ml' }, 'tsp': { value: 5, unit: 'ml' }, 't': { value: 5, unit: 'ml' },
+  '컵': { value: 240, unit: 'ml' }, 'cup': { value: 240, unit: 'ml' }, 'c': { value: 240, unit: 'ml' },
+  '반컵': { value: 120, unit: 'ml' }, '반 컵': { value: 120, unit: 'ml' }, 'half cup': { value: 120, unit: 'ml' },
+  '1/3컵': { value: 80, unit: 'ml' }, '1/3 컵': { value: 80, unit: 'ml' }, '1/3 cup': { value: 80, unit: 'ml' },
+  '1/4컵': { value: 60, unit: 'ml' }, '1/4 컵': { value: 60, unit: 'ml' }, 'quarter cup': { value: 60, unit: 'ml' },
+  '종이컵': { value: 180, unit: 'ml' }, 'paper cup': { value: 180, unit: 'ml' },
+  '밥공기': { value: 200, unit: 'ml' }, 'rice bowl': { value: 200, unit: 'ml' },
+  '국자': { value: 60, unit: 'ml' }, 'ladle': { value: 60, unit: 'ml' },
+  'ml': { value: 1, unit: 'ml' }, 'cc': { value: 1, unit: 'ml' },
+  'fl oz': { value: 30, unit: 'ml' }, 'fluid ounce': { value: 30, unit: 'ml' },
+  '한스푼': { value: 20, unit: 'ml' }, '한 스푼': { value: 20, unit: 'ml' }, 'heaping tablespoon': { value: 20, unit: 'ml' },
+  'dash': { value: 1, unit: 'ml' },
+  'splash': { value: 5, unit: 'ml' },
+  // 무게(g)
+  '한줌': { value: 30, unit: 'g' }, '한 줌': { value: 30, unit: 'g' }, 'handful': { value: 30, unit: 'g' }, 'a handful': { value: 30, unit: 'g' },
+  '두줌': { value: 60, unit: 'g' }, '두 줌': { value: 60, unit: 'g' }, 'two handfuls': { value: 60, unit: 'g' },
+  '한움큼': { value: 40, unit: 'g' }, '한 움큼': { value: 40, unit: 'g' }, 'fistful': { value: 40, unit: 'g' },
+  'g': { value: 1, unit: 'g' }, 'gram': { value: 1, unit: 'g' }, 'grams': { value: 1, unit: 'g' },
+  'kg': { value: 1000, unit: 'g' }, 'kilogram': { value: 1000, unit: 'g' },
+  'oz': { value: 28, unit: 'g' }, 'ounce': { value: 28, unit: 'g' },
+  'lb': { value: 454, unit: 'g' }, 'pound': { value: 454, unit: 'g' },
+  '묶음': { value: 100, unit: 'g' }, '단': { value: 100, unit: 'g' }, 'bunch': { value: 100, unit: 'g' },
+  '통': { value: 400, unit: 'g' }, '캔': { value: 400, unit: 'g' }, 'can': { value: 400, unit: 'g' },
+  '쪽': { value: 5, unit: 'g' }, 'clove': { value: 5, unit: 'g' },       // 마늘 1쪽
+  '장': { value: 2, unit: 'g' }, 'sheet': { value: 2, unit: 'g' },        // 김 1장
+  // 모호한 표현
+  '약간': { value: 2, unit: 'g' }, '조금': { value: 2, unit: 'g' }, 'a little': { value: 2, unit: 'g' }, 'a bit': { value: 2, unit: 'g' },
+  '적당량': { value: 5, unit: 'g' }, 'to taste': { value: 5, unit: 'g' }, 'as needed': { value: 5, unit: 'g' },
+  '듬뿍': { value: 20, unit: 'g' }, 'generously': { value: 20, unit: 'g' },
+  '한꼬집': { value: 0.5, unit: 'g' }, '한 꼬집': { value: 0.5, unit: 'g' }, 'pinch': { value: 0.5, unit: 'g' }, 'a pinch': { value: 0.5, unit: 'g' },
+};
+
+// 재료 unit을 g/ml로 정규화하고 amount=0인 경우 fallback 처리
+function normalizeIngredients(ingredients) {
+  return ingredients.map(ing => {
+    let { name, amount, unit } = ing;
+    const unitKey = (unit || '').trim().toLowerCase();
+    const mapped = UNIT_MAP[unitKey] || UNIT_MAP[unit?.trim()] || null;
+
+    if (mapped) {
+      // 단위 변환: amount * mapped.value → g 또는 ml 기준
+      amount = Math.round((amount || 1) * mapped.value);
+      unit = mapped.unit;
+    }
+
+    // amount가 0이거나 없으면 기본값 100g으로 fallback
+    if (!amount || amount <= 0) {
+      amount = 100;
+      unit = unit || 'g';
+    }
+
+    return { name, amount, unit };
+  });
+}
+
 async function getNutritionFromUSDA(ingredients, fetch) {
   let totalNutrition = {
     calories: 0, carbs: 0, sugar: 0,
     protein: 0, fat: 0, sodium: 0, cholesterol: 0
   };
+
+  // 단위 정규화 (비정형 → g/ml, amount=0 fallback)
+  ingredients = normalizeIngredients(ingredients);
 
   // 한국어 재료명이 있으면 영어로 번역
   const names = ingredients.map(i => i.name);
@@ -206,8 +270,24 @@ CRITICAL RULES for diet version:
 - Reduce amounts of high-calorie ingredients (butter, oil, sugar)
 - Do NOT add ingredients that increase total calories
 
+UNIT RULES (CRITICAL for accurate calorie calculation):
+- ALL ingredient amounts MUST be numeric values in g or ml — never use vague words
+- Convert ALL units to g or ml: "2 tbsp soy sauce" → amount: 30, unit: "ml"
+- For countable items without a standard weight, ESTIMATE based on context:
+  * "개" (piece): egg=50g, onion=150g, garlic clove=5g, potato=150g, carrot=100g
+  * "대" (stalk): green onion=30g, carrot=100g, cucumber=150g
+  * "봉지/팩" (pack): use product weight from context, or default 200g
+  * "slice" of bread=30g, cheese=20g, meat=80g
+- Minimum amount is 1 — never return 0 for any ingredient
+- If amount is truly unknown, use a reasonable default (e.g. 100g for main ingredients, 5g for seasonings)
+
+SERVING RULES:
+- ALWAYS normalize all ingredient amounts to exactly 1 serving (per person)
+- Divide all amounts by the total number of servings in the original recipe
+- Set "servings": 1 in both original and diet JSON
+
 TASK:
-1. Extract ingredients with exact amounts (g, ml, etc) from the description/comments
+1. Extract ingredients with exact amounts (g or ml) from the description/comments, normalized to 1 serving
 2. Create a diet-optimized version with ingredient substitutions
 3. Extract cooking steps
 
@@ -215,14 +295,14 @@ Return ONLY valid JSON:
 {
   "original": {
     "title": "string",
-    "servings": 2,
+    "servings": 1,
     "cookTime": 30,
     "ingredients": [{"name": "string", "amount": 100, "unit": "g"}],
     "steps": ["step1", "step2"]
   },
   "diet": {
     "title": "string",
-    "servings": 2,
+    "servings": 1,
     "cookTime": 30,
     "ingredients": [{"name": "string", "amount": 100, "unit": "g"}],
     "steps": ["step1", "step2"],
