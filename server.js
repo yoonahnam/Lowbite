@@ -4,6 +4,13 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+// 소스/설정 파일이 웹으로 내려받아지지 않게 차단
+app.use((req, res, next) => {
+  if (/^\/(server\.js|package(-lock)?\.json|vercel\.json|desktop\.ini|\.env|\.git|node_modules)/i.test(req.path)) {
+    return res.status(404).end();
+  }
+  next();
+});
 app.use(express.static('.'));
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
